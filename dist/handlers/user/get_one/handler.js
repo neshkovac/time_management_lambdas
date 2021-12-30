@@ -18688,22 +18688,29 @@ exports.LRUCache = LRUCache;
 
 /***/ }),
 
-/***/ "./src/models/db/db.ts":
-/*!*****************************!*\
-  !*** ./src/models/db/db.ts ***!
-  \*****************************/
+/***/ "./src/models/db/DynamoUserRepository.ts":
+/*!***********************************************!*\
+  !*** ./src/models/db/DynamoUserRepository.ts ***!
+  \***********************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DynamoRepository = void 0;
+exports.DynamoUserRepository = void 0;
 const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6.js");
 const dynamodb_1 = __webpack_require__(/*! aws-sdk/clients/dynamodb */ "./node_modules/aws-sdk/clients/dynamodb.js");
-class DynamoRepository {
-    constructor(params) {
-        this.tableName = params.tableName;
-        this.region = params.region;
+const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../util/constants */ "./src/util/constants.ts"));
+class DynamoUserRepository {
+    constructor() {
+        this.tableName = constants.USER_TABLE_NAME;
+        this.region = constants.USER_REGION;
+    }
+    static getInstance() {
+        if (!this.instance) {
+            this.instance = new DynamoUserRepository();
+        }
+        return this.instance;
     }
     serialize(item) {
         const keys = Object.keys(item);
@@ -18790,7 +18797,7 @@ class DynamoRepository {
         });
     }
 }
-exports.DynamoRepository = DynamoRepository;
+exports.DynamoUserRepository = DynamoUserRepository;
 
 
 /***/ }),
@@ -23593,8 +23600,7 @@ const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6
 const user_1 = __webpack_require__(/*! ../../../models/user */ "./src/models/user.ts");
 const badId_1 = __webpack_require__(/*! ../../../models/errors/badId */ "./src/models/errors/badId.ts");
 const badRequest_1 = __webpack_require__(/*! ../../../models/errors/badRequest */ "./src/models/errors/badRequest.ts");
-const db_1 = __webpack_require__(/*! ../../../models/db/db */ "./src/models/db/db.ts");
-const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../../util/constants */ "./src/util/constants.ts"));
+const DynamoUserRepository_1 = __webpack_require__(/*! ../../../models/db/DynamoUserRepository */ "./src/models/db/DynamoUserRepository.ts");
 const handler = function (event) {
     return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         if (!event) {
@@ -23605,14 +23611,11 @@ const handler = function (event) {
             throw new badId_1.BadIDError('Please supply a valid ID.');
         }
         const user = new user_1.User({ id: id });
-        const dynamoRepository = new db_1.DynamoRepository({
-            tableName: constants.USER_TABLE_NAME,
-            region: constants.USER_REGION,
-        });
-        const userExists = yield dynamoRepository.getOne(user.id);
+        const dynamoRepository = DynamoUserRepository_1.DynamoUserRepository.getInstance();
+        const userExists = yield (dynamoRepository === null || dynamoRepository === void 0 ? void 0 : dynamoRepository.getOne(user.id));
         return {
             statusCode: 200,
-            body: JSON.stringify(userExists.Item, null, 2),
+            body: JSON.stringify(userExists === null || userExists === void 0 ? void 0 : userExists.Item, null, 2),
         };
     });
 };

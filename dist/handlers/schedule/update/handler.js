@@ -18688,22 +18688,29 @@ exports.LRUCache = LRUCache;
 
 /***/ }),
 
-/***/ "./src/models/db/db.ts":
-/*!*****************************!*\
-  !*** ./src/models/db/db.ts ***!
-  \*****************************/
+/***/ "./src/models/db/DynamoScheduleRepository.ts":
+/*!***************************************************!*\
+  !*** ./src/models/db/DynamoScheduleRepository.ts ***!
+  \***************************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DynamoRepository = void 0;
+exports.DynamoScheduleRepository = void 0;
 const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6.js");
 const dynamodb_1 = __webpack_require__(/*! aws-sdk/clients/dynamodb */ "./node_modules/aws-sdk/clients/dynamodb.js");
-class DynamoRepository {
-    constructor(params) {
-        this.tableName = params.tableName;
-        this.region = params.region;
+const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../util/constants */ "./src/util/constants.ts"));
+class DynamoScheduleRepository {
+    constructor() {
+        this.tableName = constants.SCHEDULE_TABLE_NAME;
+        this.region = constants.SCHEDULE_REGION;
+    }
+    static getInstance() {
+        if (!this.instance) {
+            this.instance = new DynamoScheduleRepository();
+        }
+        return this.instance;
     }
     serialize(item) {
         const keys = Object.keys(item);
@@ -18790,7 +18797,121 @@ class DynamoRepository {
         });
     }
 }
-exports.DynamoRepository = DynamoRepository;
+exports.DynamoScheduleRepository = DynamoScheduleRepository;
+
+
+/***/ }),
+
+/***/ "./src/models/db/DynamoUserRepository.ts":
+/*!***********************************************!*\
+  !*** ./src/models/db/DynamoUserRepository.ts ***!
+  \***********************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DynamoUserRepository = void 0;
+const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6.js");
+const dynamodb_1 = __webpack_require__(/*! aws-sdk/clients/dynamodb */ "./node_modules/aws-sdk/clients/dynamodb.js");
+const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../util/constants */ "./src/util/constants.ts"));
+class DynamoUserRepository {
+    constructor() {
+        this.tableName = constants.USER_TABLE_NAME;
+        this.region = constants.USER_REGION;
+    }
+    static getInstance() {
+        if (!this.instance) {
+            this.instance = new DynamoUserRepository();
+        }
+        return this.instance;
+    }
+    serialize(item) {
+        const keys = Object.keys(item);
+        const seralized = {};
+        keys.forEach((key) => (seralized[key] = item[key]));
+        return seralized;
+    }
+    create(item) {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+            const dbClient = new dynamodb_1.DocumentClient({ params: { region: this.region, ReturnItemCollectionMetrics: 'SIZE' } });
+            const dbParams = {
+                TableName: this.tableName,
+                Item: this.serialize(item),
+            };
+            try {
+                const result = yield dbClient.put(dbParams).promise();
+                return result.ItemCollectionMetrics ? result.ItemCollectionMetrics : {};
+            }
+            catch (error) {
+                throw new Error(error.message);
+            }
+        });
+    }
+    delete(id) {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+            const dbClient = new dynamodb_1.DocumentClient({ params: { region: this.region, ReturnItemCollectionMetrics: 'SIZE' } });
+            const dbParams = {
+                TableName: this.tableName,
+                Key: {
+                    id: id,
+                },
+            };
+            try {
+                const result = yield dbClient.delete(dbParams).promise();
+                return result.ItemCollectionMetrics ? result.ItemCollectionMetrics : {};
+            }
+            catch (err) {
+                throw new Error(err.message);
+            }
+        });
+    }
+    getAll() {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+            const dbClient = new dynamodb_1.DocumentClient({ params: { region: this.region }, convertEmptyValues: true });
+            const dbParams = {
+                TableName: this.tableName,
+            };
+            try {
+                const schedules = yield dbClient.scan(dbParams).promise();
+                return schedules || [];
+            }
+            catch (error) {
+                throw new Error(error.message);
+            }
+        });
+    }
+    getOne(id) {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+            const dbClient = new dynamodb_1.DocumentClient({ params: { region: this.region } });
+            const dbParams = {
+                TableName: this.tableName,
+                Key: {
+                    id: id,
+                },
+            };
+            try {
+                const schedule = yield dbClient.get(dbParams).promise();
+                return schedule || {};
+            }
+            catch (error) {
+                throw new Error(error.message);
+            }
+        });
+    }
+    update(item) {
+        return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
+            try {
+                const resp = yield this.create(item);
+                return resp;
+            }
+            catch (err) {
+                throw new Error(err.message);
+            }
+        });
+    }
+}
+exports.DynamoUserRepository = DynamoUserRepository;
 
 
 /***/ }),
@@ -23631,12 +23752,12 @@ var exports = __webpack_exports__;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.handler = void 0;
 const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6.js");
+const DynamoScheduleRepository_1 = __webpack_require__(/*! ../../../models/db/DynamoScheduleRepository */ "./src/models/db/DynamoScheduleRepository.ts");
+const DynamoUserRepository_1 = __webpack_require__(/*! ../../../models/db/DynamoUserRepository */ "./src/models/db/DynamoUserRepository.ts");
 const badId_1 = __webpack_require__(/*! ../../../models/errors/badId */ "./src/models/errors/badId.ts");
 const badRequest_1 = __webpack_require__(/*! ../../../models/errors/badRequest */ "./src/models/errors/badRequest.ts");
 const schedule_1 = __webpack_require__(/*! ../../../models/schedule */ "./src/models/schedule.ts");
 const user_1 = __webpack_require__(/*! ../../../models/user */ "./src/models/user.ts");
-const db_1 = __webpack_require__(/*! ../../../models/db/db */ "./src/models/db/db.ts");
-const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../../util/constants */ "./src/util/constants.ts"));
 const handler = function (event) {
     return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         if (!event) {
@@ -23650,15 +23771,12 @@ const handler = function (event) {
         }
         const { id } = event.pathParameters;
         const payload = JSON.parse(event.body);
-        const userDynamoRepository = new db_1.DynamoRepository({
-            tableName: constants.USER_TABLE_NAME,
-            region: constants.USER_REGION,
-        });
+        const userDynamoRepository = DynamoUserRepository_1.DynamoUserRepository.getInstance();
         if (payload.userId) {
             const user = new user_1.User({ id: payload.userId });
             try {
-                const userExists = yield userDynamoRepository.getOne(user.id);
-                if (!userExists.Item) {
+                const userExists = yield (userDynamoRepository === null || userDynamoRepository === void 0 ? void 0 : userDynamoRepository.getOne(user.id));
+                if (!(userExists === null || userExists === void 0 ? void 0 : userExists.Item)) {
                     throw new badId_1.BadIDError('Bad userId parameter from payload. User with such id does not exist.');
                 }
             }
@@ -23667,12 +23785,9 @@ const handler = function (event) {
             }
         }
         const schedule = new schedule_1.Schedule({ id });
-        const scheduleDynamoRepository = new db_1.DynamoRepository({
-            tableName: constants.SCHEDULE_TABLE_NAME,
-            region: constants.SCHEDULE_REGION,
-        });
-        const existingScheduleItem = yield scheduleDynamoRepository.getOne(schedule.id);
-        if (!existingScheduleItem.Item) {
+        const scheduleDynamoRepository = DynamoScheduleRepository_1.DynamoScheduleRepository.getInstance();
+        const existingScheduleItem = yield (scheduleDynamoRepository === null || scheduleDynamoRepository === void 0 ? void 0 : scheduleDynamoRepository.getOne(schedule.id));
+        if (!(existingScheduleItem === null || existingScheduleItem === void 0 ? void 0 : existingScheduleItem.Item)) {
             throw new badId_1.BadIDError('Provided path parameter id does not match any record in schedule-table.');
         }
         const updateSchedule = new schedule_1.Schedule({
@@ -23684,7 +23799,7 @@ const handler = function (event) {
             eventTitle: payload.eventTitle || existingScheduleItem.Item.eventTitle,
             eventType: payload.eventType || existingScheduleItem.Item.eventType,
         });
-        yield scheduleDynamoRepository.update(updateSchedule);
+        yield (scheduleDynamoRepository === null || scheduleDynamoRepository === void 0 ? void 0 : scheduleDynamoRepository.update(updateSchedule));
         return {
             statusCode: 200,
             body: JSON.stringify(`Schedule with id ${id} successfully updated.`),

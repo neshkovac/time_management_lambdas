@@ -18688,22 +18688,29 @@ exports.LRUCache = LRUCache;
 
 /***/ }),
 
-/***/ "./src/models/db/db.ts":
-/*!*****************************!*\
-  !*** ./src/models/db/db.ts ***!
-  \*****************************/
+/***/ "./src/models/db/DynamoScheduleRepository.ts":
+/*!***************************************************!*\
+  !*** ./src/models/db/DynamoScheduleRepository.ts ***!
+  \***************************************************/
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DynamoRepository = void 0;
+exports.DynamoScheduleRepository = void 0;
 const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6.js");
 const dynamodb_1 = __webpack_require__(/*! aws-sdk/clients/dynamodb */ "./node_modules/aws-sdk/clients/dynamodb.js");
-class DynamoRepository {
-    constructor(params) {
-        this.tableName = params.tableName;
-        this.region = params.region;
+const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../util/constants */ "./src/util/constants.ts"));
+class DynamoScheduleRepository {
+    constructor() {
+        this.tableName = constants.SCHEDULE_TABLE_NAME;
+        this.region = constants.SCHEDULE_REGION;
+    }
+    static getInstance() {
+        if (!this.instance) {
+            this.instance = new DynamoScheduleRepository();
+        }
+        return this.instance;
     }
     serialize(item) {
         const keys = Object.keys(item);
@@ -18790,7 +18797,7 @@ class DynamoRepository {
         });
     }
 }
-exports.DynamoRepository = DynamoRepository;
+exports.DynamoScheduleRepository = DynamoScheduleRepository;
 
 
 /***/ }),
@@ -22950,19 +22957,15 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.handler = void 0;
 const tslib_1 = __webpack_require__(/*! tslib */ "./node_modules/tslib/tslib.es6.js");
 const badRequest_1 = __webpack_require__(/*! ../../../models/errors/badRequest */ "./src/models/errors/badRequest.ts");
-const db_1 = __webpack_require__(/*! ../../../models/db/db */ "./src/models/db/db.ts");
-const constants = (0, tslib_1.__importStar)(__webpack_require__(/*! ../../../util/constants */ "./src/util/constants.ts"));
+const DynamoScheduleRepository_1 = __webpack_require__(/*! ../../../models/db/DynamoScheduleRepository */ "./src/models/db/DynamoScheduleRepository.ts");
 const handler = function (event) {
     return (0, tslib_1.__awaiter)(this, void 0, void 0, function* () {
         if (!event) {
             throw new badRequest_1.BadRequestError('Bad request.');
         }
-        const dynamoRepository = new db_1.DynamoRepository({
-            tableName: constants.SCHEDULE_TABLE_NAME,
-            region: constants.SCHEDULE_REGION,
-        });
-        const schedules = yield dynamoRepository.getAll();
-        if (!Object.keys(schedules)) {
+        const dynamoRepository = DynamoScheduleRepository_1.DynamoScheduleRepository.getInstance();
+        const schedules = yield (dynamoRepository === null || dynamoRepository === void 0 ? void 0 : dynamoRepository.getAll());
+        if (schedules && !Object.keys(schedules)) {
             return {
                 statusCode: 200,
                 body: 'There are no records in table.',
